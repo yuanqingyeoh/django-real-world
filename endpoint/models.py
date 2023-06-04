@@ -8,6 +8,10 @@ class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        abstract = True
+        ordering = ['-updated_at', '-created_at']
+
 
 class UserManager(BaseUserManager):
 
@@ -37,7 +41,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-    username = models.CharField(max_length=255)
+    username = models.CharField(max_length=255, unique=True)
     email = models.EmailField(unique=True)
 
     is_active = models.BooleanField(default=True)
@@ -58,7 +62,7 @@ class User(AbstractBaseUser):
 class Profile(models.Model):
     username = models.CharField(max_length=255)
     bio = models.TextField()
-    image = models.ImageField()
+    image = models.URLField()
     # following - need a Following table?
 
 
