@@ -15,29 +15,28 @@ class TimeStampedModel(models.Model):
 
 class UserManager(BaseUserManager):
 
-    def create_user(self, username, email, password=None):
-        if username is None:
-            raise TypeError("User must have a username")
-        if email is None:
-            raise TypeError("user must have an email address")
+    def create_user(self, email, password=None, **other_fields):
 
-        user = self.model(username=username, email=self.normalize_email(email))
-        user.set_password(password)
+        user = User(email=email, **other_fields)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
         user.save()
 
         return user
 
-    def create_superuser(self, username, email, password):
-        if password is None:
-            raise TypeError("Superuser must have a password")
-
-        user = self.model(username=username, email=self.normalize_email(email))
-        user.set_password(password)
-        user.is_staff = True
-        user.is_superuser = True
-        user.save()
-
-        return user
+    # def create_superuser(self, username, email, password):
+    #     if password is None:
+    #         raise TypeError("Superuser must have a password")
+    #
+    #     user = self.model(username=username, email=self.normalize_email(email))
+    #     user.set_password(password)
+    #     user.is_staff = True
+    #     user.is_superuser = True
+    #     user.save()
+    #
+    #     return user
 
 
 class User(AbstractUser):
@@ -48,8 +47,8 @@ class User(AbstractUser):
 
     username = models.CharField(max_length=255, unique=True)
     email = models.EmailField(unique=True)
-    bio = models.TextField()
-    image = models.URLField()
+    bio = models.TextField(null=True, blank=True)
+    image = models.URLField(null=True, blank=True)
 
     followers = models.ManyToManyField('self', blank=True, symmetrical=False)
 
@@ -61,6 +60,12 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.email
+
+    def get_full_name(self):
+        return self.name
+
+    def get_short_name(self):
+        return self.name
 
 #
 # class Profile(models.Model):
