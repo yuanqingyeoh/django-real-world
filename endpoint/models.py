@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 
 # Create your models here.
 
@@ -40,49 +40,53 @@ class UserManager(BaseUserManager):
         return user
 
 
-class User(AbstractBaseUser):
+class User(AbstractUser):
+
+    # remove default fields
+    first_name = None
+    last_name = None
+
     username = models.CharField(max_length=255, unique=True)
     email = models.EmailField(unique=True)
+    bio = models.TextField()
+    image = models.URLField()
 
-    is_active = models.BooleanField(default=True)
+    followers = models.ManyToManyField('self', blank=True, symmetrical=False)
 
-    is_staff = models.BooleanField(default=False)
-
+    EMAIL_FIELD = 'email'
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
-
-    # token = models.TextField()
+    REQUIRED_FIELDS = []
 
     objects = UserManager()
 
     def __str__(self):
         return self.email
 
-
-class Profile(models.Model):
-    username = models.CharField(max_length=255)
-    bio = models.TextField()
-    image = models.URLField()
-    # following - need a Following table?
-
-
-class Article(TimeStampedModel):
-    slug = models.SlugField(max_length=255, unique=True)
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    body = models.TextField()
-    tags = models.ManyToManyField('Tag', related_name='articles')
-    author = models.ForeignKey('Profile', on_delete=models.CASCADE, related_name='articles')
-
-
-class Comment(TimeStampedModel):
-    body = models.TextField()
-
-    article = models.ForeignKey('Article', on_delete=models.CASCADE, related_name='comments')
-
-    author = models.ForeignKey('Profile', on_delete=models.CASCADE, related_name='comments')
-
-
-class Tag(TimeStampedModel):
-    tag = models.CharField(max_length=255)
-    slug = models.SlugField(unique=True)  # TODO find out why need this?
+#
+# class Profile(models.Model):
+#     username = models.CharField(max_length=255)
+#     bio = models.TextField()
+#     image = models.URLField()
+#     # following - need a Following table?
+#
+#
+# class Article(TimeStampedModel):
+#     slug = models.SlugField(max_length=255, unique=True)
+#     title = models.CharField(max_length=255)
+#     description = models.TextField()
+#     body = models.TextField()
+#     tags = models.ManyToManyField('Tag', related_name='articles')
+#     author = models.ForeignKey('Profile', on_delete=models.CASCADE, related_name='articles')
+#
+#
+# class Comment(TimeStampedModel):
+#     body = models.TextField()
+#
+#     article = models.ForeignKey('Article', on_delete=models.CASCADE, related_name='comments')
+#
+#     author = models.ForeignKey('Profile', on_delete=models.CASCADE, related_name='comments')
+#
+#
+# class Tag(TimeStampedModel):
+#     tag = models.CharField(max_length=255)
+#     slug = models.SlugField(unique=True)  # TODO find out why need this?
