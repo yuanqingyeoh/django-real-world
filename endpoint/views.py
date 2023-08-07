@@ -6,6 +6,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework import viewsets, exceptions
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from endpoint.serializers import UserSerializer
+
 
 # from endpoint.models import User, Profile, Article, Tag
 # from endpoint.serializers import UserSerializer, ProfileSerializer, ArticleSerializer, TagSerializer, \
@@ -21,39 +26,41 @@ def health_check(request):
     return JsonResponse({"HealthCheck": "OK"}, safe=False)
 
 
-# class AuthenticationList(APIView):
-#     permission_classes = [AllowAny]
-#     serializer_class = AuthenticationSerializer
-#
-#     def post(self, request):
-#         # email = request.data['user']['email']
-#
-#         user = request.data.get('user', {})
-#
-#         serializer = self.serializer_class(data=user)
-#         serializer.is_valid()
-#
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-#
-#
-# class RegistrationList(APIView):
-#     permission_classes = [AllowAny]
-#     serializer_class = RegistrationSerializer
-#
-#     def post(self, request):
-#         # username = request.data['user']['username']
-#         # email = request.data['user']['email']
-#         # password = request.data['user']['password']
-#
-#         user = request.data.get('user', {})
-#
-#         serializer = self.serializer_class(data=user)
-#         serializer.is_valid(raise_exception=True)
-#         serializer.save()
-#
-#         return Response(serializer.data, status=status.HTTP_201_CREATED)
-#
-#
+@api_view(['POST'])
+def user_registration(request):
+    try:
+        user_data = request.data.get('user')
+        serializer = UserSerializer(data=user_data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'user': serializer.data}, status=status.HTTP_201_CREATED)
+
+    except exceptions.ValidationError as validation_error:
+        return Response({'error': validation_error.detail}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as generic_error:
+        return Response({'error': 'An error occurred during user registration.'},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+def user_login(request):
+    try:
+        user_data = request.data.get('user')
+        user = authenticate(email=user_data['email'],  password=user_data['password'])
+        serializer = UserSerializer(user)
+        jwt_token = RefreshToken.for_user(user)
+        serializer_data = serializer.data
+        serializer_data['token'] = str(jwt_token.access_token)
+        response_data = {
+            'user': serializer_data
+        }
+        return Response(response_data, status=status.HTTP_202_ACCEPTED)
+
+    except Exception:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+
 # # def get_current_user(request):
 # #     if request.method == 'GET':
 # #         user = User.objects.all()

@@ -63,13 +63,8 @@ from django.contrib.auth import authenticate
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'token', 'username', 'bio', 'image']
-
-
-class ProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Profile
-        fields = ['username', 'bio', 'image']
+        fields = ['username', 'email', 'bio', 'image', 'password']
+        extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -78,6 +73,21 @@ class ProfileSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
+
+    def update(self, instance, validated_data):
+        for key, value in validated_data.items():
+            if key == 'password':
+                instance.set_password(value)
+            else:
+                setattr(instance, key, value)
+        instance.save()
+        return instance
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'bio', 'image']
 
 
 # class ArticleSerializer(serializers.ModelSerializer):
