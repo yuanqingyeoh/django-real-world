@@ -85,9 +85,17 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    following = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['username', 'bio', 'image']
+        fields = ['username', 'bio', 'image', 'following']
+
+    def get_following(self, obj):
+        user = self.context.get('request').user
+        if user.is_authenticated:
+            return obj.followers.filter(pk=user.id).exists()
+        return False
 
 
 # class ArticleSerializer(serializers.ModelSerializer):

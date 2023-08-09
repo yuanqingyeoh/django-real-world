@@ -2,14 +2,15 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import viewsets, exceptions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from endpoint.serializers import UserSerializer
+from endpoint.serializers import UserSerializer, ProfileSerializer
 
 
 # from endpoint.models import User, Profile, Article, Tag
@@ -27,6 +28,7 @@ def health_check(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def user_registration(request):
     try:
         user_data = request.data.get('user')
@@ -43,6 +45,7 @@ def user_registration(request):
 
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def user_login(request):
     try:
         user_data = request.data.get('user')
@@ -59,6 +62,17 @@ def user_login(request):
     except Exception:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
+
+class UserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+
+        request_user = request.user
+
+        serializer = ProfileSerializer(request_user, context={'request': request})
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 # # def get_current_user(request):
