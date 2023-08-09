@@ -11,6 +11,7 @@ urlpatterns = [
     path('healthcheck/', views.health_check),
     path('users/login', views.user_login),
     path('users', views.user_registration),
+    path('user', views.UserView.as_view())
     # # path('profiles/<str:username>', ProfileViewSet.as_view({'get': 'by_username'})),
     # # path('profiles/<str:username>', get_profile),
     # path('articles/<str:slug>', get_article),
