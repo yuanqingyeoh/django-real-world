@@ -158,13 +158,13 @@ class ArticleViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response({'article': serializer.data}, status=status.HTTP_201_CREATED, headers=headers)
 
     def retrieve(self, request, slug, *args, **kwargs):
         article = self.get_queryset().get(slug=slug)
         serializer = self.get_serializer(article, context={'request': request})
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({'article': serializer.data}, status=status.HTTP_200_OK)
 
     def update(self, request, slug, *args, **kwargs):
         article_data = request.data.get('article')
@@ -173,7 +173,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(article, data=article_data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({'article': serializer.data}, status=status.HTTP_200_OK)
 
     def destroy(self, request, slug, *args, **kwargs):
         article = self.get_queryset().get(slug=slug)
@@ -184,6 +184,35 @@ class ArticleViewSet(viewsets.ModelViewSet):
         article.delete()
 
         return Response(status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post', 'delete'])
+    def favorite(self, request, slug, *args, **kwargs):
+        if request.method == 'POST':
+            article = self.get_queryset().get(slug=slug)
+            existed = article.favorites.filter(pk=request.user.id).exists()
+            if not existed:
+                article.favorites.add(request.user)
+
+            serializer = self.get_serializer(article, data={'favorites': article.favorites}, partial=True, context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response({'article': serializer.data}, status=status.HTTP_200_OK)
+
+        elif request.method == 'DELETE':
+            article = self.get_queryset().get(slug=slug)
+            existed = article.favorites.filter(pk=request.user.id).exists()
+            if existed:
+                article.favorites.remove(request.user)
+
+            serializer = self.get_serializer(article, data={'favorites': article.favorites}, partial=True,
+                                             context={'request': request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response({'article': serializer.data}, status=status.HTTP_200_OK)
+
+
 
 
 # class ProfileViewSet(viewsets.ModelViewSet):
