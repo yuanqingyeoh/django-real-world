@@ -121,6 +121,17 @@ class ProfileView(APIView):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    def delete(self, request, username, format=None):
+        request_user = request.user
+        toUnfollow = User.objects.get(username=username)
+        toUnfollow.followers.remove(request_user)
+
+        serializer = ProfileSerializer(toUnfollow, data={'follower': toUnfollow.followers}, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 # class ProfileViewSet(viewsets.ModelViewSet):
 #     queryset = Profile.objects.all()
 #     serializer_class = ProfileSerializer
