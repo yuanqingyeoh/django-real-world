@@ -97,6 +97,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             return obj.followers.filter(pk=user.id).exists()
         return False
 
+    def update(self, instance, validated_data):
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        instance.save()
+        return instance
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return {'profile':data}
 
 # class ArticleSerializer(serializers.ModelSerializer):
 #     author = ProfileSerializer()

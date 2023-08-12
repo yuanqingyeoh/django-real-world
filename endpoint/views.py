@@ -1,5 +1,4 @@
 from django.http import JsonResponse
-from django.shortcuts import render
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -9,6 +8,7 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from endpoint.models import User
 
 from endpoint.serializers import UserSerializer, ProfileSerializer
 
@@ -73,6 +73,18 @@ class UserView(APIView):
         serializer = ProfileSerializer(request_user, context={'request': request})
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, format=None):
+        request_user = request.user
+        user_data = request.data.get('user')
+        user = User.objects.filter(pk=request_user.id).get()
+
+        serializer = ProfileSerializer(user, data=user_data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 # # def get_current_user(request):
