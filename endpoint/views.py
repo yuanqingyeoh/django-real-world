@@ -86,13 +86,41 @@ class UserView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class ProfileView(APIView):
+    permission_classes_by_method = {
+        'GET': [AllowAny()],
+        'POST': [IsAuthenticated()],
+        'DELETE': [IsAuthenticated()],
+    }
 
-# # def get_current_user(request):
-# #     if request.method == 'GET':
-# #         user = User.objects.all()
-# #         serializer = UserSerializer(user, many=True)
-# #         return JsonResponse(serializer.data, safe=False)
-#
+    def get(self, request, username, format=None):
+
+        user = User.objects.filter(username=username).get()
+
+        serializer = ProfileSerializer(user, context={'request': request})
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, username, format=None):
+        request_user = request.user
+        follower = User.objects.filter(pk=request_user.id).get()
+        toFollow = User.objects.filter(username=username).get()
+        if follower == toFollow:
+            return Response({
+                'errors': {
+                    'body': [
+                        'Invalid Follow Request'
+                    ]
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        toFollow.followers.add(follower)
+        serializer = ProfileSerializer(toFollow, data={'follower': toFollow.followers}, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 # class ProfileViewSet(viewsets.ModelViewSet):
 #     queryset = Profile.objects.all()
 #     serializer_class = ProfileSerializer
@@ -102,14 +130,6 @@ class UserView(APIView):
 #         profile = self.get_queryset().get(username=username)
 #         serializer = self.get_serializer(profile)
 #         return Response(serializer.data)
-#
-#
-# @api_view(['GET'])
-# def get_profile(request, username):
-#     profile = Profile.objects.get(username=username)
-#     serializer = ProfileSerializer(profile)
-#     return JsonResponse(serializer.data, safe=False)
-#
 #
 # # Article
 # @api_view(['GET'])
