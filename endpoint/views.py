@@ -8,9 +8,9 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from endpoint.models import User
+from endpoint.models import User, Article, Comment, Tag
 
-from endpoint.serializers import UserSerializer, ProfileSerializer
+from endpoint.serializers import UserSerializer, ProfileSerializer, ArticleSerializer, TagSerializer
 
 
 # from endpoint.models import User, Profile, Article, Tag
@@ -132,6 +132,60 @@ class ProfileView(APIView):
 
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+class ArticleViewSet(viewsets.ModelViewSet):
+    queryset = Article.objects.all()
+    serializer_class = ArticleSerializer
+    lookup_field = 'slug'
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action == 'retrieve':
+            return [AllowAny()]
+        return super().get_permissions()
+
+    def create(self, request, *args, **kwargs):
+        article_data = request.data.get('article')
+
+        # Handle Tag
+        tag_list = []
+        for tag_str in article_data.get('tagList'):
+            obj, created = Tag.objects.get_or_create(tag=tag_str)
+            tag_list.append(obj)
+
+        article_data['tagList'] = tag_list
+        serializer = self.get_serializer(data=article_data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def retrieve(self, request, slug, *args, **kwargs):
+        article = self.get_queryset().get(slug=slug)
+        serializer = self.get_serializer(article, context={'request': request})
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, slug, *args, **kwargs):
+        article_data = request.data.get('article')
+        article = self.get_queryset().get(slug=slug)
+
+        serializer = self.get_serializer(article, data=article_data, partial=True, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def destroy(self, request, slug, *args, **kwargs):
+        article = self.get_queryset().get(slug=slug)
+        if article.author != request.user:
+            return Response({'error' : {
+                'body': ['Unauthorised action']
+            }}, status=status.HTTP_401_UNAUTHORIZED)
+        article.delete()
+
+        return Response(status=status.HTTP_200_OK)
+
+
 # class ProfileViewSet(viewsets.ModelViewSet):
 #     queryset = Profile.objects.all()
 #     serializer_class = ProfileSerializer
@@ -177,10 +231,13 @@ class ProfileView(APIView):
 #     return None
 #
 #
-# # Tag
-# @api_view(['GET'])
-# @permission_classes([AllowAny])
-# def get_tags_list(request):
-#     tags = Tag.objects.all()
-#     serializer = TagSerializer(tags, many=True)
-#     return JsonResponse(serializer.data, safe=False)
+
+# Tag
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_tags_list(request):
+    tags = Tag.objects.all()
+    serializer = TagSerializer(tags, many=True)
+
+    output = [tag['tag'] for tag in serializer.data]
+    return JsonResponse({'tags':  output}, safe=False)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from endpoint.models import User
+from endpoint.models import User, Article, Comment, Tag
 # from endpoint.models import User, Profile, Article, Tag
 from django.contrib.auth import authenticate
 
@@ -107,15 +107,43 @@ class ProfileSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         return {'profile':data}
 
-# class ArticleSerializer(serializers.ModelSerializer):
-#     author = ProfileSerializer()
-#
-#     class Meta:
-#         model = Article
-#         fields = ['slug', 'title', 'description', 'body', 'author', 'createdAt', 'updatedAt']
-#
-#
-# class TagSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Tag
-#         fields = ['tag']
+
+class ArticleSerializer(serializers.ModelSerializer):
+
+    author = serializers.SerializerMethodField(read_only=True)
+    tagList = serializers.SlugRelatedField(many=True, slug_field='tag', queryset=Tag.objects.all())
+    favorited = serializers.SerializerMethodField(read_only=True)
+    favoritesCount = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Article
+        fields = ['slug', 'title', 'description', 'body', 'tagList', 'createdAt', 'updatedAt', 'favorited', 'favoritesCount', 'author']
+        read_only_fields = ['slug', 'createdAt', 'updatedAt', 'author']
+
+    def get_author(self, obj):
+        request = self.context.get('request')
+        serializers = ProfileSerializer(obj.author, context={'request': request})
+        return serializers.data['profile']
+
+    def get_favorited(self, obj):
+        user = self.context.get('request').user
+        if user.is_authenticated:
+            return obj.favorites.filter(pk=user.id).exists()
+        return False
+
+    def get_favoritesCount(self, obj):
+        return obj.favorites.all().count()
+
+    def create(self, validated_data):
+        tagList = validated_data.pop('tagList')
+        article = Article(author=self.context['request'].user, **validated_data)
+        article.save()
+        article.tagList.add(*tagList)
+
+        return article
+
+
+class TagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ['tag']

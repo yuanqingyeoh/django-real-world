@@ -143,3 +143,5 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': True,
     # 'AUTH_HEADER_TYPES': ('Token',)
 }
+
+APPEND_SLASH = False
