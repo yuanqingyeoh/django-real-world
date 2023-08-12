@@ -1,16 +1,17 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.utils.text import slugify
 
 # Create your models here.
 
 
 class TimeStampedModel(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    updatedAt = models.DateTimeField(auto_now=True)
 
     class Meta:
         abstract = True
-        ordering = ['-updated_at', '-created_at']
+        ordering = ['-updatedAt', '-createdAt']
 
 
 class UserManager(BaseUserManager):
@@ -67,31 +68,31 @@ class User(AbstractUser):
     def get_short_name(self):
         return self.name
 
-#
-# class Profile(models.Model):
-#     username = models.CharField(max_length=255)
-#     bio = models.TextField()
-#     image = models.URLField()
-#     # following - need a Following table?
-#
-#
-# class Article(TimeStampedModel):
-#     slug = models.SlugField(max_length=255, unique=True)
-#     title = models.CharField(max_length=255)
-#     description = models.TextField()
-#     body = models.TextField()
-#     tags = models.ManyToManyField('Tag', related_name='articles')
-#     author = models.ForeignKey('Profile', on_delete=models.CASCADE, related_name='articles')
-#
-#
-# class Comment(TimeStampedModel):
-#     body = models.TextField()
-#
-#     article = models.ForeignKey('Article', on_delete=models.CASCADE, related_name='comments')
-#
-#     author = models.ForeignKey('Profile', on_delete=models.CASCADE, related_name='comments')
-#
-#
-# class Tag(TimeStampedModel):
-#     tag = models.CharField(max_length=255)
-#     slug = models.SlugField(unique=True)  # TODO find out why need this?
+
+class Article(TimeStampedModel):
+    slug = models.SlugField(max_length=255, unique=True)
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    body = models.TextField()
+    tagList = models.ManyToManyField('Tag', blank=True)
+    favorites = models.ManyToManyField('User', blank=True)
+    author = models.ForeignKey('User', on_delete=models.CASCADE, related_name='articles')
+
+    def save(self, *args, **kwargs):
+        self.slug = slugify(self.title)
+        return super().save(*args, **kwargs)
+
+
+class Comment(TimeStampedModel):
+    body = models.TextField()
+
+    article = models.ForeignKey('Article', on_delete=models.CASCADE, related_name='comments')
+
+    author = models.ForeignKey('User', on_delete=models.CASCADE, related_name='comments')
+
+
+class Tag(models.Model):
+    tag = models.SlugField(unique=True)
+
+    def __str__(self):
+        return self.tag
