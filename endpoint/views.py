@@ -137,9 +137,36 @@ class ArticleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.action == 'retrieve':
+        if self.action in ['retrieve', 'list']:
             return [AllowAny()]
         return super().get_permissions()
+
+    def list(self, request, *args, **kwargs):
+        request_params = request.query_params
+
+        articles = self.get_queryset()
+        # process query param
+        offset = 0
+        limit = 20
+        if 'offset' in request_params:
+            offset = request_params.get('offset')
+        if 'limit' in request_params:
+            limit = request_params.get('limit')
+
+        if 'author' in request_params:
+            username = request_params.get('author')
+            articles = articles.filter(author__username=username)
+        if 'tag' in request_params:
+            tag = request_params.get('tag')
+            articles = articles.filter(tagList__tag=tag)
+        if 'favorited' in request_params:
+            favorited = request_params.get('favorited')
+            articles = articles.filter(favorites__username=favorited)
+
+        articles = articles.order_by('-createdAt')[offset:limit]
+
+        serializer = self.get_serializer(articles, many=True)
+        return Response({'articles': serializer.data, 'articlesCount': len(serializer.data)}, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         article_data = request.data.get('article')
@@ -208,6 +235,31 @@ class ArticleViewSet(viewsets.ModelViewSet):
             serializer.save()
 
             return Response({'article': serializer.data}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'])
+    def feed(self, request, *args, **kwargs):
+        if request.method == 'GET':
+            # Get followed user
+            followed = list(User.objects.filter(followers=request.user))
+
+            request_params = request.query_params
+
+            articles = self.get_queryset()
+            articles = articles.filter(author__in=followed).order_by('-createdAt')
+            if len(articles) > 0:
+                # process query param
+                if 'offset' in request_params:
+                    offset = request_params.get('offset')
+                    articles = articles[offset:]
+                if 'limit' in request_params:
+                    limit = request_params.get('limit')
+                    articles = articles[:limit]
+
+            serializer = self.get_serializer(articles, many=True)
+            return Response({'articles': serializer.data, 'articlesCount': len(serializer.data)},
+                            status=status.HTTP_200_OK)
+
+        return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
