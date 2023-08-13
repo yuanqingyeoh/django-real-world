@@ -143,6 +143,25 @@ class ArticleSerializer(serializers.ModelSerializer):
         return article
 
 
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.SerializerMethodField(read_only=True)
+    id = serializers.IntegerField(source='pk', read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'createdAt', 'updatedAt', 'body', 'author']
+
+    def get_author(self, obj):
+        request = self.context.get('request')
+        serializers = ProfileSerializer(obj.author, context={'request': request})
+        return serializers.data['profile']
+
+    def create(self, validated_data):
+        comment = Comment(author=self.context['request'].user, article=self.context['article'], **validated_data)
+        comment.save()
+
+        return comment
+
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag

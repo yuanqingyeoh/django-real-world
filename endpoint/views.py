@@ -9,13 +9,10 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from endpoint.models import User, Article, Comment, Tag
+from django.core import exceptions as e
 
-from endpoint.serializers import UserSerializer, ProfileSerializer, ArticleSerializer, TagSerializer
+from endpoint.serializers import UserSerializer, ProfileSerializer, ArticleSerializer, TagSerializer, CommentSerializer
 
-
-# from endpoint.models import User, Profile, Article, Tag
-# from endpoint.serializers import UserSerializer, ProfileSerializer, ArticleSerializer, TagSerializer, \
-#     AuthenticationSerializer, RegistrationSerializer
 
 
 # Create your views here.
@@ -213,53 +210,58 @@ class ArticleViewSet(viewsets.ModelViewSet):
             return Response({'article': serializer.data}, status=status.HTTP_200_OK)
 
 
+class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action == 'list':
+            return [AllowAny()]
+        return super().get_permissions()
+
+    def list(self, request, article_slug, *args, **kwargs):
+        try:
+            article = Article.objects.get(slug=article_slug)
+            comments = list(self.get_queryset().filter(article=article))
+
+            serializer = self.get_serializer(comments, many=True, context={'request': request})
+
+            return Response({'comments': serializer.data}, status=status.HTTP_200_OK)
+        except e.ObjectDoesNotExist:
+            return Response({'error': 'Article Does Not Exist'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# class ProfileViewSet(viewsets.ModelViewSet):
-#     queryset = Profile.objects.all()
-#     serializer_class = ProfileSerializer
-#
-#     @action(detail=False, methods=['GET'], url_path='(?P<username>\w+)')
-#     def by_username(self, request, username):
-#         profile = self.get_queryset().get(username=username)
-#         serializer = self.get_serializer(profile)
-#         return Response(serializer.data)
-#
-# # Article
-# @api_view(['GET'])
-# @permission_classes([AllowAny])
-# def get_article(request, slug):
-#     article = Article.objects.get(slug=slug)
-#     serializer = ArticleSerializer(article)
-#     return JsonResponse(serializer.data, safe=False)
-#
-#
-# @api_view(['POST'])
-# def create_article(request, article):
-#     toSave = Article(title=article.title, description=article.description, body=article.body)
-#     toSave.save()
-#     serializer = ArticleSerializer(toSave)
-#     return JsonResponse(serializer.data, safe=False)
-#
-#
-# @api_view(['PUT'])
-# def update_article(request, slug, article):
-#     toSave = Article.objects.get(slug=slug)
-#     toSave.title = article.title
-#     toSave.description = article.description
-#     toSave.body = article.body
-#     toSave.save()
-#     serializer = ArticleSerializer(toSave)
-#     return JsonResponse(serializer.data, safe=False)
-#
-#
-# @api_view(['DELETE'])
-# def delete_article(request, slug):
-#     article = Article.objects.get(slug=slug)
-#     article.delete()
-#     return None
-#
-#
+    def create(self, request, article_slug, *args, **kwargs):
+        try:
+            comment_data = request.data.get('comment')
+
+            article = Article.objects.get(slug=article_slug)
+
+            serializer = self.get_serializer(data=comment_data, context={'request': request, 'article': article})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response({'comment': serializer.data}, status=status.HTTP_201_CREATED)
+
+        except e.ObjectDoesNotExist:
+            return Response({'error': 'Article Does Not Exist'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, article_slug, *args, **kwargs):
+        try:
+            article = Article.objects.get(slug=article_slug)
+            comment = self.get_queryset().get(article=article, pk=kwargs['pk'])
+            if comment.author != request.user:
+                return Response({'error' : {
+                    'body': ['Unauthorised action']
+                }}, status=status.HTTP_401_UNAUTHORIZED)
+
+            comment.delete()
+
+            return Response(status=status.HTTP_200_OK)
+        except e.ObjectDoesNotExist:
+            return Response({'error': 'Article Does Not Exist'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 # Tag
 @api_view(['GET'])
