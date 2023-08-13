@@ -3,7 +3,10 @@ from rest_framework.routers import SimpleRouter
 from endpoint import views
 
 router = SimpleRouter(trailing_slash=False)
-router.register(r'articles', views.ArticleViewSet, basename="profiles")
+router.register(r'articles', views.ArticleViewSet)
+
+router2 = SimpleRouter(trailing_slash=False)
+router2.register(r'comments', views.CommentViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -13,6 +16,6 @@ urlpatterns = [
     path('user', views.UserView.as_view()),
     path('profiles/<str:username>', views.ProfileView.as_view()),
     path('profiles/<str:username>/follow', views.ProfileView.as_view()),
-    # path('articles/<str:slug>', get_article),
+    path('articles/<slug:article_slug>/', include(router2.urls)),
     path('tags', views.get_tags_list)
 ]
